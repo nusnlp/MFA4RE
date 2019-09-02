@@ -37,7 +37,7 @@ python re_models.py 0 NYT10/ NYT10/MFA_5/ 5 test 5
 If you use the source code or models from this work, please cite our paper:
 
 ```
-@article{nayak2019effective,
+@inproceedings{nayak2019effective,
   author    = {Nayak, Tapas and Ng, Hwee Tou},
   title     = {Effective Attention Modeling for Neural Relation Extraction},
   booktitle = {Proceedings of the CoNLL},
