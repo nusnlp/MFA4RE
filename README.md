@@ -18,17 +18,12 @@ https://drive.google.com/drive/folders/1xWoN8zfK3IA1WZqxBQ1-Nw-y275YE628?usp=sha
 
 python re_models.py gpu_id source_dir target_dir model_id train/test multi_factor_count
 
-Model	ID
-
-CNN	1
-
-PCNN	2
-
-EA	3
-
-BGWA	4
-
-Our	5
+Model   ID
+CNN	    1
+PCNN	  2
+EA	    3
+BGWA	  4
+Our	    5
 
 Use multi_factor_count=0 to run our own baseline model BiLSTM-CNN
 
