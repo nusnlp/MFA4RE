@@ -18,21 +18,18 @@ https://drive.google.com/drive/folders/1xWoN8zfK3IA1WZqxBQ1-Nw-y275YE628?usp=sha
 
 python re_models.py gpu_id source_dir target_dir model_id train/test multi_factor_count
 
-Model   ID
-CNN	    1
-PCNN	  2
-EA	    3
-BGWA	  4
-Our	    5
+Use model_id as 1 for CNN, 2 for PCNN, 3 for EA, 4 for BGWA, and 5 for our models.
 
 Use multi_factor_count=0 to run our own baseline model BiLSTM-CNN
 
 Example:
 
 Training command to train our model with multi factor count of 5
+
 python re_models.py 0 NYT10/ NYT10/MFA_5/ 5 train 5
 
 Inference command to test our model with multi factor count of 5
+
 python re_models.py 0 NYT10/ NYT10/MFA_5/ 5 test 5
 
 ### Publication ###
