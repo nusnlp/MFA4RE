@@ -267,8 +267,8 @@ def read_data(file_path, dep_file, is_training_data=False):
     dep_lines = reader.readlines()
     reader.close()
 
-    lines = lines[0:min(1000, len(lines))]
-    dep_lines = dep_lines[0:min(1000, len(dep_lines))]
+    # lines = lines[0:min(1000, len(lines))]
+    # dep_lines = dep_lines[0:min(1000, len(dep_lines))]
 
     data = get_data(lines, dep_lines, is_training_data)
     return data
