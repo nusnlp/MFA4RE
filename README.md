@@ -1,6 +1,6 @@
 # EAM4RE #
 
-This repository contains the source code of the paper "Effective Attention Modeling for Neural Relation Extraction" published in CoNLL 2019.
+This repository contains the source code of the paper "Syntax Focused Multi-Factor Attention for Relation Extraction" published in CoNLL 2019.
 
 ### Datasets ###
 
@@ -45,7 +45,7 @@ If you use the source code or models from this work, please cite our paper:
 ```
 @inproceedings{nayak2019effective,
   author    = {Nayak, Tapas and Ng, Hwee Tou},
-  title     = {Effective Attention Modeling for Neural Relation Extraction},
+  title     = {Syntax Focused Multi-Factor Attention for Relation Extraction},
   booktitle = {Proceedings of the CoNLL},
   year      = {2019},
 }
