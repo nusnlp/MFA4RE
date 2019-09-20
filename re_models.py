@@ -1180,7 +1180,7 @@ def predict(samples, model, model_id):
                             arg1_dep_dist_mask, arg2_dep_dist_mask)
 
         preds += list(outputs.data.cpu().numpy())
-
+    model.zero_grad()
     return preds
 
 
@@ -1314,11 +1314,11 @@ def torch_train(model_id, train_samples, dev_samples, test_samples, best_model_f
                                 arg1_dep_dist_mask, arg2_dep_dist_mask, True)
 
             loss = rel_loss_func(outputs, relation_label_target)
-            model.zero_grad()
             loss.backward()
             torch.nn.utils.clip_grad_norm(model.parameters(), 10.0)
             optimizer.step()
             train_loss_val += loss.data[0]
+            model.zero_grad()
 
         train_loss_val /= batch_count
         end_time = datetime.datetime.now()
@@ -1379,7 +1379,7 @@ if __name__ == "__main__":
     mfc = 1
     if model_name == 5:
         mfc = int(sys.argv[6])
-        assert 0<= mfc <= 5
+        assert 0 <= mfc <= 5
 
     if not os.path.exists(trg_data_folder):
         os.mkdir(trg_data_folder)
