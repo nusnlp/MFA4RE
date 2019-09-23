@@ -195,10 +195,10 @@ def get_sample(uid, Id, sent, dep_data, arg1, arg2, arg1_start, arg1_end, arg2_s
         arg2_mask[i] = 1
 
     sample = QASample(UID=uid, Id=Id, Len=len(norm_words), Text=sent, Arg1=arg1, Arg2=arg2,
-                      Words=norm_words, Words_Mask=words_mask, WordsEntIndicator=entity_indicator,
+                      Words=norm_words, WordsMask=words_mask, WordsEntIndicator=entity_indicator,
                       WordsArg1Dist=arg1_head_dist_lst, WordsArg1DepDist=arg1_dep_dist,
                       WordsArg2Dist=arg2_head_dist_lst, WordsArg2DepDist=arg2_dep_dist,
-                      WordsDepDist=arg_dep_dist, Arg1_Mask=arg1_mask, Arg2_Mask=arg2_mask,
+                      WordsDepDist=arg_dep_dist, Arg1Mask=arg1_mask, Arg2Mask=arg2_mask,
                       Piece1Mask=piece1_mask, Piece2Mask=piece2_mask, Piece3Mask=piece3_mask,
                       RelationName=rel_name)
     return sample
@@ -549,12 +549,13 @@ def get_batch_data(cur_samples, is_training=False):
 
     for sample in cur_samples:
         words_list.append(get_words_index_seq(sample.Words, max_len))
+        words_mask_list.append(get_padded_mask(sample.WordsMask, max_len))
         words_arg1_dist_list.append(get_distance_seq(sample.WordsArg1Dist, max_len))
         words_arg2_dist_list.append(get_distance_seq(sample.WordsArg2Dist, max_len))
         words_ent_ind_list.append(get_ent_indicator_seq(sample.WordsEntIndicator, max_len))
 
-        arg1_mask_list.append(get_padded_mask(sample.Arg1_Mask, max_len))
-        arg2_mask_list.append(get_padded_mask(sample.Arg2_Mask, max_len))
+        arg1_mask_list.append(get_padded_mask(sample.Arg1Mask, max_len))
+        arg2_mask_list.append(get_padded_mask(sample.Arg2Mask, max_len))
 
         dep_dist, dep_dist_mask = get_dep_distance(sample.WordsArg1DepDist, max_len, dep_win_size_rel)
         arg1_dep_dist_list.append(dep_dist)
@@ -571,7 +572,6 @@ def get_batch_data(cur_samples, is_training=False):
         piece1mask_list.append(get_padded_mask(sample.Piece1Mask, max_len))
         piece2mask_list.append(get_padded_mask(sample.Piece2Mask, max_len))
         piece3mask_list.append(get_padded_mask(sample.Piece3Mask, max_len))
-        words_mask_list.append(get_padded_mask(sample.Words_Mask, max_len))
 
         arg1_list.append(get_words_index_seq([sample.Arg1.split()[-1]], 1))
         arg2_list.append(get_words_index_seq([sample.Arg2.split()[-1]], 1))
@@ -580,25 +580,25 @@ def get_batch_data(cur_samples, is_training=False):
             rel_labels_list.append(relation_cls_label_map[sample.RelationName])
 
     return max_len, \
-            {'words_input': np.array(words_list, dtype=np.float32),
-             'words_mask_input': np.array(words_mask_list),
-             'words_arg1_dist_input': np.array(words_arg1_dist_list),
-             'words_arg2_dist_input': np.array(words_arg2_dist_list),
-             'words_ent_indicator_input': np.array(words_ent_ind_list),
-             'arg1_dep_dist': np.array(arg1_dep_dist_list),
-             'arg2_dep_dist': np.array(arg2_dep_dist_list),
-             'arg_dep_dist': np.array(arg_dep_dist_list),
-             'arg1_dep_dist_mask': np.array(arg1_dep_dist_mask),
-             'arg2_dep_dist_mask': np.array(arg2_dep_dist_mask),
-             'arg_dep_dist_mask': np.array(arg_dep_dist_mask),
-             'arg1_mask_input': np.array(arg1_mask_list),
-             'arg2_mask_input': np.array(arg2_mask_list),
-             'piece1mask_input': np.array(piece1mask_list),
-             'piece2mask_input': np.array(piece2mask_list),
-             'piece3mask_input': np.array(piece3mask_list),
+            {'words': np.array(words_list, dtype=np.float32),
+             'wordsMask': np.array(words_mask_list),
+             'arg1LinDist': np.array(words_arg1_dist_list),
+             'arg2LinDist': np.array(words_arg2_dist_list),
+             'entIndicator': np.array(words_ent_ind_list),
+             'arg1DepDist': np.array(arg1_dep_dist_list),
+             'arg2DepDist': np.array(arg2_dep_dist_list),
+             'argDepDist': np.array(arg_dep_dist_list),
+             'arg1DistMask': np.array(arg1_dep_dist_mask),
+             'arg2DistMask': np.array(arg2_dep_dist_mask),
+             'argDistMask': np.array(arg_dep_dist_mask),
+             'arg1Mask': np.array(arg1_mask_list),
+             'arg2Mask': np.array(arg2_mask_list),
+             'piece1Mask': np.array(piece1mask_list),
+             'piece2Mask': np.array(piece2mask_list),
+             'piece3Mask': np.array(piece3mask_list),
              'arg1':np.array(arg1_list),
              'arg2': np.array(arg2_list)}, \
-            {'relation_label': np.array(rel_labels_list, dtype=np.int32)}
+            {'relation': np.array(rel_labels_list, dtype=np.int32)}
 
 
 # Models
@@ -1094,90 +1094,45 @@ def predict(samples, model, model_id):
             batch_end = len(samples)
 
         cur_batch = samples[batch_start:batch_end]
-        cur_seq_len, cur_samples_input, cur_samples_target = get_batch_data(cur_batch)
+        cur_seq_len, cur_input, _ = get_batch_data(cur_batch)
 
-        words_seq = torch.from_numpy(cur_samples_input['words_input'].astype('long'))
-        words_mask = torch.from_numpy(cur_samples_input['words_mask_input'].astype('float32'))
-        words_arg1_dist_seq = torch.from_numpy(cur_samples_input['words_arg1_dist_input'].astype('long'))
-        words_arg2_dist_seq = torch.from_numpy(cur_samples_input['words_arg2_dist_input'].astype('long'))
-        words_ent_ind_seq = torch.from_numpy(cur_samples_input['words_ent_indicator_input'].astype('long'))
+        words_seq = autograd.Variable(torch.from_numpy(cur_input['words'].astype('long')).cuda())
+        words_mask = autograd.Variable(torch.from_numpy(cur_input['wordsMask'].astype('float32')).cuda())
+        arg1_lin_dist = autograd.Variable(torch.from_numpy(cur_input['arg1LinDist'].astype('long')).cuda())
+        arg2_lin_dist = autograd.Variable(torch.from_numpy(cur_input['arg2LinDist'].astype('long')).cuda())
+        ent_ind_seq = autograd.Variable(torch.from_numpy(cur_input['entIndicator'].astype('long')).cuda())
 
-        arg_dep_dist = torch.from_numpy(cur_samples_input['arg_dep_dist'].astype('float32'))
-        arg_dep_dist_mask = torch.from_numpy(cur_samples_input['arg_dep_dist_mask'].astype('uint8'))
-        arg1_dep_dist = torch.from_numpy(cur_samples_input['arg1_dep_dist'].astype('float32'))
-        arg1_dep_dist_mask = torch.from_numpy(cur_samples_input['arg1_dep_dist_mask'].astype('uint8'))
-        arg2_dep_dist = torch.from_numpy(cur_samples_input['arg2_dep_dist'].astype('float32'))
-        arg2_dep_dist_mask = torch.from_numpy(cur_samples_input['arg2_dep_dist_mask'].astype('uint8'))
+        arg_dep_dist = autograd.Variable(torch.from_numpy(cur_input['argDepDist'].astype('float32')).cuda())
+        arg_dist_mask = autograd.Variable(torch.from_numpy(cur_input['argDistMask'].astype('uint8')).cuda())
+        arg1_dep_dist = autograd.Variable(torch.from_numpy(cur_input['arg1DepDist'].astype('float32')).cuda())
+        arg1_dist_mask = autograd.Variable(torch.from_numpy(cur_input['arg1DistMask'].astype('uint8')).cuda())
+        arg2_dep_dist = autograd.Variable(torch.from_numpy(cur_input['arg2DepDist'].astype('float32')).cuda())
+        arg2_dist_mask = autograd.Variable(torch.from_numpy(cur_input['arg2DistMask'].astype('uint8')).cuda())
 
-        arg1 = torch.from_numpy(cur_samples_input['arg1'].astype('long'))
-        arg2 = torch.from_numpy(cur_samples_input['arg2'].astype('long'))
-        arg1_mask = torch.from_numpy(cur_samples_input['arg1_mask_input'].astype('float32'))
-        arg2_mask = torch.from_numpy(cur_samples_input['arg2_mask_input'].astype('float32'))
+        arg1 = autograd.Variable(torch.from_numpy(cur_input['arg1'].astype('long')).cuda())
+        arg2 = autograd.Variable(torch.from_numpy(cur_input['arg2'].astype('long')).cuda())
+        arg1_mask = autograd.Variable(torch.from_numpy(cur_input['arg1Mask'].astype('float32')).cuda())
+        arg2_mask = autograd.Variable(torch.from_numpy(cur_input['arg2Mask'].astype('float32')).cuda())
 
-        piece1mask_seq = torch.from_numpy(cur_samples_input['piece1mask_input'].astype('float32'))
-        piece2mask_seq = torch.from_numpy(cur_samples_input['piece2mask_input'].astype('float32'))
-        piece3mask_seq = torch.from_numpy(cur_samples_input['piece3mask_input'].astype('float32'))
-
-        if torch.cuda.is_available():
-            words_seq = words_seq.cuda()
-            words_mask = words_mask.cuda()
-            words_arg1_dist_seq = words_arg1_dist_seq.cuda()
-            words_arg2_dist_seq = words_arg2_dist_seq.cuda()
-            words_ent_ind_seq = words_ent_ind_seq.cuda()
-
-            arg_dep_dist = arg_dep_dist.cuda()
-            arg_dep_dist_mask = arg_dep_dist_mask.cuda()
-            arg1_dep_dist = arg1_dep_dist.cuda()
-            arg1_dep_dist_mask = arg1_dep_dist_mask.cuda()
-            arg2_dep_dist = arg2_dep_dist.cuda()
-            arg2_dep_dist_mask = arg2_dep_dist_mask.cuda()
-
-            arg1 = arg1.cuda()
-            arg2 = arg2.cuda()
-            arg1_mask = arg1_mask.cuda()
-            arg2_mask = arg2_mask.cuda()
-
-            piece1mask_seq = piece1mask_seq.cuda()
-            piece2mask_seq = piece2mask_seq.cuda()
-            piece3mask_seq = piece3mask_seq.cuda()
-
-        words_seq = autograd.Variable(words_seq)
-        words_mask = autograd.Variable(words_mask)
-        words_arg1_dist_seq = autograd.Variable(words_arg1_dist_seq)
-        words_arg2_dist_seq = autograd.Variable(words_arg2_dist_seq)
-        words_ent_ind_seq = autograd.Variable(words_ent_ind_seq)
-
-        arg1 = autograd.Variable(arg1)
-        arg2 = autograd.Variable(arg2)
-        arg1_mask = autograd.Variable(arg1_mask)
-        arg2_mask = autograd.Variable(arg2_mask)
-
-        arg_dep_dist = autograd.Variable(arg_dep_dist)
-        arg_dep_dist_mask = autograd.Variable(arg_dep_dist_mask)
-        arg1_dep_dist = autograd.Variable(arg1_dep_dist)
-        arg1_dep_dist_mask = autograd.Variable(arg1_dep_dist_mask)
-        arg2_dep_dist = autograd.Variable(arg2_dep_dist)
-        arg2_dep_dist_mask = autograd.Variable(arg2_dep_dist_mask)
-
-        piece1mask_seq = autograd.Variable(piece1mask_seq)
-        piece2mask_seq = autograd.Variable(piece2mask_seq)
-        piece3mask_seq = autograd.Variable(piece3mask_seq)
+        piece1mask_seq = autograd.Variable(torch.from_numpy(cur_input['piece1Mask'].astype('float32')).cuda())
+        piece2mask_seq = autograd.Variable(torch.from_numpy(cur_input['piece2Mask'].astype('float32')).cuda())
+        piece3mask_seq = autograd.Variable(torch.from_numpy(cur_input['piece3Mask'].astype('float32')).cuda())
 
         if model_id in [1]:
-            outputs = model(words_seq, words_mask, words_arg1_dist_seq, words_arg2_dist_seq)
+            outputs = model(words_seq, words_mask, arg1_lin_dist, arg2_lin_dist)
         elif model_id == 2:
-            outputs = model(words_seq, words_mask, words_arg1_dist_seq, words_arg2_dist_seq,
+            outputs = model(words_seq, words_mask, arg1_lin_dist, arg2_lin_dist,
                             piece1mask_seq, piece2mask_seq, piece3mask_seq)
         elif model_id in [3]:
-            outputs = model(words_seq, words_mask, words_arg1_dist_seq, words_arg2_dist_seq,
+            outputs = model(words_seq, words_mask, arg1_lin_dist, arg2_lin_dist,
                             piece1mask_seq, piece2mask_seq, piece3mask_seq, arg1, arg2)
         elif model_id in [4]:
-            outputs = model(words_seq, words_mask, words_arg1_dist_seq, words_arg2_dist_seq,
+            outputs = model(words_seq, words_mask, arg1_lin_dist, arg2_lin_dist,
                             piece1mask_seq, piece2mask_seq, piece3mask_seq)
         elif model_id in [5]:
-            outputs = model(words_seq, words_mask, words_ent_ind_seq, words_arg1_dist_seq, words_arg2_dist_seq,
-                            arg_dep_dist, arg1_dep_dist, arg2_dep_dist, arg1_mask, arg2_mask, arg_dep_dist_mask,
-                            arg1_dep_dist_mask, arg2_dep_dist_mask)
+            outputs = model(words_seq, words_mask, ent_ind_seq, arg1_lin_dist, arg2_lin_dist,
+                            arg_dep_dist, arg1_dep_dist, arg2_dep_dist, arg1_mask, arg2_mask, arg_dist_mask,
+                            arg1_dist_mask, arg2_dist_mask)
 
         preds += list(outputs.data.cpu().numpy())
     model.zero_grad()
@@ -1222,98 +1177,49 @@ def torch_train(model_id, train_samples, dev_samples, test_samples, best_model_f
                 batch_end = len(cur_shuffled_train_data)
 
             cur_batch = cur_shuffled_train_data[batch_start:batch_end]
-            cur_seq_len, cur_samples_input, cur_samples_target = get_batch_data(cur_batch, True)
+            cur_seq_len, cur_input, cur_target = get_batch_data(cur_batch, True)
 
-            words_seq = torch.from_numpy(cur_samples_input['words_input'].astype('long'))
-            words_mask = torch.from_numpy(cur_samples_input['words_mask_input'].astype('float32'))
-            words_arg1_dist_seq = torch.from_numpy(cur_samples_input['words_arg1_dist_input'].astype('long'))
-            words_arg2_dist_seq = torch.from_numpy(cur_samples_input['words_arg2_dist_input'].astype('long'))
-            words_ent_ind_seq = torch.from_numpy(cur_samples_input['words_ent_indicator_input'].astype('long'))
+            words_seq = autograd.Variable(torch.from_numpy(cur_input['words'].astype('long')).cuda())
+            words_mask = autograd.Variable(torch.from_numpy(cur_input['wordsMask'].astype('float32')).cuda())
+            arg1_lin_dist = autograd.Variable(torch.from_numpy(cur_input['arg1LinDist'].astype('long')).cuda())
+            arg2_lin_dist = autograd.Variable(torch.from_numpy(cur_input['arg2LinDist'].astype('long')).cuda())
+            ent_ind_seq = autograd.Variable(torch.from_numpy(cur_input['entIndicator'].astype('long')).cuda())
 
-            arg_dep_dist = torch.from_numpy(cur_samples_input['arg_dep_dist'].astype('float32'))
-            arg_dep_dist_mask = torch.from_numpy(cur_samples_input['arg_dep_dist_mask'].astype('uint8'))
-            arg1_dep_dist = torch.from_numpy(cur_samples_input['arg1_dep_dist'].astype('float32'))
-            arg1_dep_dist_mask = torch.from_numpy(cur_samples_input['arg1_dep_dist_mask'].astype('uint8'))
-            arg2_dep_dist = torch.from_numpy(cur_samples_input['arg2_dep_dist'].astype('float32'))
-            arg2_dep_dist_mask = torch.from_numpy(cur_samples_input['arg2_dep_dist_mask'].astype('uint8'))
+            arg_dep_dist = autograd.Variable(torch.from_numpy(cur_input['argDepDist'].astype('float32')).cuda())
+            arg_dist_mask = autograd.Variable(torch.from_numpy(cur_input['argDistMask'].astype('uint8')).cuda())
+            arg1_dep_dist = autograd.Variable(torch.from_numpy(cur_input['arg1DepDist'].astype('float32')).cuda())
+            arg1_dist_mask = autograd.Variable(torch.from_numpy(cur_input['arg1DistMask'].astype('uint8')).cuda())
+            arg2_dep_dist = autograd.Variable(torch.from_numpy(cur_input['arg2DepDist'].astype('float32')).cuda())
+            arg2_dist_mask = autograd.Variable(torch.from_numpy(cur_input['arg2DistMask'].astype('uint8')).cuda())
 
-            arg1 = torch.from_numpy(cur_samples_input['arg1'].astype('long'))
-            arg2 = torch.from_numpy(cur_samples_input['arg2'].astype('long'))
-            arg1_mask = torch.from_numpy(cur_samples_input['arg1_mask_input'].astype('float32'))
-            arg2_mask = torch.from_numpy(cur_samples_input['arg2_mask_input'].astype('float32'))
+            arg1 = autograd.Variable(torch.from_numpy(cur_input['arg1'].astype('long')).cuda())
+            arg2 = autograd.Variable(torch.from_numpy(cur_input['arg2'].astype('long')).cuda())
+            arg1_mask = autograd.Variable(torch.from_numpy(cur_input['arg1Mask'].astype('float32')).cuda())
+            arg2_mask = autograd.Variable(torch.from_numpy(cur_input['arg2Mask'].astype('float32')).cuda())
 
-            piece1mask_seq = torch.from_numpy(cur_samples_input['piece1mask_input'].astype('float32'))
-            piece2mask_seq = torch.from_numpy(cur_samples_input['piece2mask_input'].astype('float32'))
-            piece3mask_seq = torch.from_numpy(cur_samples_input['piece3mask_input'].astype('float32'))
+            piece1mask_seq = autograd.Variable(torch.from_numpy(cur_input['piece1Mask'].astype('float32')).cuda())
+            piece2mask_seq = autograd.Variable(torch.from_numpy(cur_input['piece2Mask'].astype('float32')).cuda())
+            piece3mask_seq = autograd.Variable(torch.from_numpy(cur_input['piece3Mask'].astype('float32')).cuda())
 
-            relation_label_target = torch.from_numpy(cur_samples_target['relation_label'].astype('long'))
-
-            if torch.cuda.is_available():
-                words_seq = words_seq.cuda()
-                words_mask = words_mask.cuda()
-                words_arg1_dist_seq = words_arg1_dist_seq.cuda()
-                words_arg2_dist_seq = words_arg2_dist_seq.cuda()
-                words_ent_ind_seq = words_ent_ind_seq.cuda()
-
-                arg_dep_dist = arg_dep_dist.cuda()
-                arg_dep_dist_mask = arg_dep_dist_mask.cuda()
-                arg1_dep_dist = arg1_dep_dist.cuda()
-                arg1_dep_dist_mask = arg1_dep_dist_mask.cuda()
-                arg2_dep_dist = arg2_dep_dist.cuda()
-                arg2_dep_dist_mask = arg2_dep_dist_mask.cuda()
-
-                arg1 = arg1.cuda()
-                arg2 = arg2.cuda()
-                arg1_mask = arg1_mask.cuda()
-                arg2_mask = arg2_mask.cuda()
-
-                piece1mask_seq = piece1mask_seq.cuda()
-                piece2mask_seq = piece2mask_seq.cuda()
-                piece3mask_seq = piece3mask_seq.cuda()
-
-                relation_label_target = relation_label_target.cuda()
-
-            words_seq = autograd.Variable(words_seq)
-            words_mask = autograd.Variable(words_mask)
-            words_arg1_dist_seq = autograd.Variable(words_arg1_dist_seq)
-            words_arg2_dist_seq = autograd.Variable(words_arg2_dist_seq)
-            words_ent_ind_seq = autograd.Variable(words_ent_ind_seq)
-
-            arg1 = autograd.Variable(arg1)
-            arg2 = autograd.Variable(arg2)
-            arg1_mask = autograd.Variable(arg1_mask)
-            arg2_mask = autograd.Variable(arg2_mask)
-
-            arg_dep_dist = autograd.Variable(arg_dep_dist)
-            arg_dep_dist_mask = autograd.Variable(arg_dep_dist_mask)
-            arg1_dep_dist = autograd.Variable(arg1_dep_dist)
-            arg1_dep_dist_mask = autograd.Variable(arg1_dep_dist_mask)
-            arg2_dep_dist = autograd.Variable(arg2_dep_dist)
-            arg2_dep_dist_mask = autograd.Variable(arg2_dep_dist_mask)
-
-            piece1mask_seq = autograd.Variable(piece1mask_seq)
-            piece2mask_seq = autograd.Variable(piece2mask_seq)
-            piece3mask_seq = autograd.Variable(piece3mask_seq)
-
-            relation_label_target = autograd.Variable(relation_label_target)
+            target = autograd.Variable(torch.from_numpy(cur_target['relation'].astype('long')).cuda())
 
             if model_id in [1]:
-                outputs = model(words_seq, words_mask, words_arg1_dist_seq, words_arg2_dist_seq, True)
+                outputs = model(words_seq, words_mask, arg1_lin_dist, arg2_lin_dist, True)
             elif model_id == 2:
-                outputs = model(words_seq, words_mask, words_arg1_dist_seq, words_arg2_dist_seq,
+                outputs = model(words_seq, words_mask, arg1_lin_dist, arg2_lin_dist,
                                 piece1mask_seq, piece2mask_seq, piece3mask_seq, True)
             elif model_id in [3]:
-                outputs = model(words_seq, words_mask, words_arg1_dist_seq, words_arg2_dist_seq,
+                outputs = model(words_seq, words_mask, arg1_lin_dist, arg2_lin_dist,
                                 piece1mask_seq, piece2mask_seq, piece3mask_seq, arg1, arg2, True)
             elif model_id in [4]:
-                outputs = model(words_seq, words_mask, words_arg1_dist_seq, words_arg2_dist_seq,
+                outputs = model(words_seq, words_mask, arg1_lin_dist, arg2_lin_dist,
                                 piece1mask_seq, piece2mask_seq, piece3mask_seq, True)
             elif model_id in [5]:
-                outputs = model(words_seq, words_mask, words_ent_ind_seq, words_arg1_dist_seq, words_arg2_dist_seq,
-                                arg_dep_dist, arg1_dep_dist, arg2_dep_dist, arg1_mask, arg2_mask, arg_dep_dist_mask,
-                                arg1_dep_dist_mask, arg2_dep_dist_mask, True)
+                outputs = model(words_seq, words_mask, ent_ind_seq, arg1_lin_dist, arg2_lin_dist,
+                                arg_dep_dist, arg1_dep_dist, arg2_dep_dist, arg1_mask, arg2_mask, arg_dist_mask,
+                                arg1_dist_mask, arg2_dist_mask, True)
 
-            loss = rel_loss_func(outputs, relation_label_target)
+            loss = rel_loss_func(outputs, target)
             loss.backward()
             torch.nn.utils.clip_grad_norm(model.parameters(), 10.0)
             optimizer.step()
@@ -1410,9 +1316,9 @@ if __name__ == "__main__":
     max_word_arg_head_dist = 30
     dist_vocab_size = 2 * max_word_arg_head_dist + 1
 
-    QASample = recordclass("QASample", "UID Id Len Text Arg1 Arg2 Words Words_Mask WordsArg1Dist WordsArg2Dist "
+    QASample = recordclass("QASample", "UID Id Len Text Arg1 Arg2 Words WordsMask WordsArg1Dist WordsArg2Dist "
                                        "WordsEntIndicator WordsArg1DepDist WordsArg2DepDist WordsDepDist "
-                                       "Arg1_Mask Arg2_Mask Piece1Mask Piece2Mask Piece3Mask RelationName")
+                                       "Arg1Mask Arg2Mask Piece1Mask Piece2Mask Piece3Mask RelationName")
 
     # train a model
     if job_mode == 'train':
