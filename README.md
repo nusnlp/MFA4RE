@@ -46,7 +46,7 @@ If you use the source code or models from this work, please cite our paper:
 @inproceedings{nayak2019effective,
   author    = {Nayak, Tapas and Ng, Hwee Tou},
   title     = {Effective Attention Modeling for Neural Relation Extraction},
-  booktitle = {Proceedings of the CoNLL},
+  booktitle = {Proceedings of The SIGNLL Conference on Computational Natural Language Learning (CoNLL)},
   year      = {2019},
 }
 ```
