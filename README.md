@@ -34,11 +34,11 @@ Example:
 
 Training command to train our model with multi factor count of 5
 
-python re_models.py 0 NYT10/ NYT10/MFA_5/ 5 train 5
+python3.5 re_models.py 0 NYT10/ NYT10/MFA_5/ 5 train 5
 
 Inference command to test our model with multi factor count of 5
 
-python re_models.py 0 NYT10/ NYT10/MFA_5/ 5 test 5
+python3.5 re_models.py 0 NYT10/ NYT10/MFA_5/ 5 test 5
 
 ### Publication ###
 
@@ -49,7 +49,7 @@ If you use the source code or models from this work, please cite our paper:
   author    = {Nayak, Tapas and Ng, Hwee Tou},
   title     = {Effective Attention Modeling for Neural Relation Extraction},
   booktitle = {Proceedings of The SIGNLL Conference on Computational Natural Language Learning (CoNLL)},
-  year      = {2019},
+  year      = {2019}
 }
 ```
 
