@@ -42,6 +42,8 @@ python3.5 re_models.py 0 NYT10/ NYT10/MFA_5/ 5 test 5
 
 ### Publication ###
 
+https://www.aclweb.org/anthology/K19-1056/
+
 If you use the source code or models from this work, please cite our paper:
 
 ```
